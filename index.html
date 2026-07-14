@@ -129,6 +129,23 @@
   #prev{ left:7vw; } #next{ right:7vw; }
   .hint{ position:fixed; bottom:26px; left:50%; transform:translateX(-50%); font-family:var(--font-mono);
     font-size:11px; color:var(--ink-dim); z-index:40; }
+
+  /* video slide */
+  .video-wrap{ display:flex; justify-content:center; min-height:0; }
+  .video-wrap video{ max-width:100%; max-height:54vh; border:1px solid var(--line); border-radius:10px;
+    background:#000; box-shadow:0 18px 40px -24px rgba(0,0,0,.5); }
+  .speed-row{ display:flex; align-items:center; gap:8px; font-family:var(--font-mono); font-size:13px; color:var(--ink-dim); }
+  .speed-row .speed-label{ letter-spacing:.05em; text-transform:uppercase; font-size:11px; }
+  .speed-row button{ font-family:var(--font-mono); font-size:13px; padding:5px 13px; border:1px solid var(--line);
+    background:var(--panel); color:var(--ink); border-radius:6px; cursor:pointer; transition:all .15s ease; }
+  .speed-row button:hover{ border-color:var(--accent); }
+  .speed-row button.on{ background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:700; }
+  .badge-link{ font-family:var(--font-mono); font-size:13px; color:var(--accent-2); word-break:break-all; }
+
+  /* two-hands story */
+  .hand{ position:relative; }
+  .hand .who-badge{ position:absolute; top:-10px; right:14px; font-family:var(--font-mono); font-size:10.5px;
+    letter-spacing:.05em; text-transform:uppercase; background:var(--bg); padding:0 8px; color:var(--ink-dim); }
 </style>
 
 <div class="progress" id="progress"></div>
@@ -405,24 +422,66 @@
     <div class="foot"><span>Траблшутинг</span><span class="counter">13 / 16</span></div>
   </section>
 
-  <!-- 14 -->
+  <!-- 14 · мета-история обзор -->
   <section class="slide top">
-    <div class="eyebrow">13 · Лайфхак в сторону</div>
+    <div class="eyebrow">13 · Мета-демо</div>
     <div class="slide-body">
-      <h2>Эта презентация — сама пример быстрой итерации</h2>
-      <p class="lead">Слайды лежат в git-репозитории, подключённом к Netlify. Пуш в ветку — сайт задеплоился сам. Добавил слайд после доклада — он уже на сайте, без ручной публикации.</p>
+      <h2>Этот доклад выложили в сеть сами агенты — обоими способами сразу</h2>
+      <p class="lead">Сайт, который ты сейчас смотришь, никто не публиковал руками. Обе половины работы сделали агенты Claude — ровно те два инструмента, про которые весь доклад. Получилась живая иллюстрация темы на самой презентации.</p>
       <div class="flow">
-        <div class="node">git push</div><div class="arrow">→</div>
-        <div class="node" style="border-color:var(--accent)">Netlify: авто-деплой</div><div class="arrow">→</div>
-        <div class="node">сайт обновился по той же ссылке</div>
+        <div class="node" style="border-color:var(--accent)">Плагин в Chrome</div><div class="arrow">→</div>
+        <div class="node">создал репозиторий + GitHub Pages</div><div class="arrow">→</div>
+        <div class="node" style="border-color:var(--accent)">Вкладка в приложении</div><div class="arrow">→</div>
+        <div class="node">залила презентацию → сайт живой</div>
       </div>
-      <ul class="plain" style="margin-top:6px">
-        <li>Один HTML-файл — статика, без сборки. Netlify цепляется к репозиторию и деплоит любой пуш в ветку.</li>
-        <li>Правки после доклада не рассылаешь заново — ссылка живёт, контент под ней обновляется сам.</li>
-        <li>Тот же принцип, что и в основной теме: убираем ручные шаги между «сделал» и «показал».</li>
-      </ul>
+      <p class="sub">Дальше — кто именно что сделал, и запись процесса.</p>
     </div>
-    <div class="foot"><span>Лайфхак: Netlify</span><span class="counter">14 / 16</span></div>
+    <div class="foot"><span>Мета-демо · обзор</span><span class="counter">14 / 18</span></div>
+  </section>
+
+  <!-- 15 · кто что сделал -->
+  <section class="slide wide top">
+    <div class="eyebrow">14 · Мета-демо · разделение труда</div>
+    <div class="slide-body">
+      <h2>Две руки: плагин создал репозиторий, вкладка залила контент</h2>
+      <div class="grid2">
+        <div class="card hand">
+          <span class="who-badge">Способ А · ты + плагин</span>
+          <span class="tag">Claude in Chrome</span>
+          <h3>Создание репозитория и GitHub Pages</h3>
+          <p>Одной фразой попросил создать репозиторий. Агент сам прошёл ~110 шагов в интерфейсе GitHub: создал публичный <code class="k">ChromUsePresentation</code>, добавил <code class="k">README.md</code>, включил <b>GitHub Pages</b> (Deploy from branch → <code class="k">main</code> → <code class="k">/root</code>) и вернул готовую ссылку на сайт.</p>
+        </div>
+        <div class="card hand">
+          <span class="who-badge">Способ Б · я + вкладка</span>
+          <span class="tag alt">Десктоп-приложение</span>
+          <h3>Поиск пути к репо и пуш презентации</h3>
+          <p>Через встроенную вкладку зашёл на GitHub под твоим логином, считал точный путь к репозиторию, собрал локальный git, закоммитил файлы презентации и запушил в <code class="k">main</code>. GitHub Pages подхватил пуш и сам пересобрал сайт.</p>
+        </div>
+      </div>
+      <p class="sub">Живой сайт: <span class="badge-link">artemkopyl-dot.github.io/ChromUsePresentation/</span> — любой следующий <code class="k">git push</code> в <code class="k">main</code> обновляет его автоматически, по той же ссылке.</p>
+    </div>
+    <div class="foot"><span>Мета-демо · кто что сделал</span><span class="counter">15 / 18</span></div>
+  </section>
+
+  <!-- 16 · видео -->
+  <section class="slide top">
+    <div class="eyebrow">15 · Мета-демо · запись</div>
+    <div class="slide-body">
+      <h2>Как плагин создавал репозиторий — запись сеанса</h2>
+      <div class="video-wrap">
+        <video id="procVideo" src="assets/createrepo.mp4" controls playsinline preload="metadata"></video>
+      </div>
+      <div class="speed-row">
+        <span class="speed-label">Скорость</span>
+        <button data-rate="1">1×</button>
+        <button data-rate="2">2×</button>
+        <button data-rate="3" class="on">3×</button>
+        <button data-rate="4">4×</button>
+        <span style="margin-left:6px">по умолчанию ×3 · переключается на лету</span>
+      </div>
+      <p class="sub">Все ~110 шагов агента в интерфейсе GitHub ужаты в короткий ролик. Для покадрового разбора конкретного шага поставь 1×.</p>
+    </div>
+    <div class="foot"><span>Мета-демо · запись</span><span class="counter">16 / 18</span></div>
   </section>
 
   <!-- 15 -->
@@ -460,18 +519,49 @@
   const slides = Array.from(document.querySelectorAll('.slide'));
   const progress = document.getElementById('progress');
   let i = 0;
+
+  // auto-number counters so inserting slides never desyncs them
+  const pad = n => String(n).padStart(2,'0');
+  slides.forEach((s,idx)=>{
+    const c = s.querySelector('.counter');
+    if(c) c.textContent = pad(idx+1) + ' / ' + pad(slides.length);
+  });
+
   function render(){
     slides.forEach((s,idx)=> s.classList.toggle('active', idx===i));
     progress.style.width = ((i+1)/slides.length*100) + '%';
     const hint = document.getElementById('hint');
     if(hint) hint.style.opacity = i===0 ? '1' : '0';
+    // pause any video that isn't on the current slide
+    document.querySelectorAll('video').forEach(v=>{
+      if(!v.closest('.slide').classList.contains('active')) v.pause();
+    });
   }
   function go(delta){ i = Math.min(slides.length-1, Math.max(0, i+delta)); render(); }
   document.getElementById('prev').addEventListener('click', ()=>go(-1));
   document.getElementById('next').addEventListener('click', ()=>go(1));
   window.addEventListener('keydown', (e)=>{
+    // don't hijack space/arrows while scrubbing the video
+    if(document.activeElement && document.activeElement.tagName === 'VIDEO') return;
     if(['ArrowRight',' ','PageDown'].includes(e.key)){ e.preventDefault(); go(1); }
     if(['ArrowLeft','Backspace','PageUp'].includes(e.key)){ e.preventDefault(); go(-1); }
   });
+
+  // video speed control — default x3, adjustable
+  const vid = document.getElementById('procVideo');
+  if(vid){
+    const DEFAULT_RATE = 3;
+    const btns = Array.from(document.querySelectorAll('.speed-row button'));
+    const apply = r => {
+      vid.playbackRate = r;
+      btns.forEach(b => b.classList.toggle('on', Number(b.dataset.rate) === r));
+    };
+    // browsers reset playbackRate on (re)load — reassert the default
+    vid.addEventListener('loadedmetadata', ()=> apply(DEFAULT_RATE));
+    vid.addEventListener('play', ()=>{ if(vid.playbackRate === 1 && !btns.some(b=>b.classList.contains('on') && b.dataset.rate==='1')) vid.playbackRate = DEFAULT_RATE; });
+    btns.forEach(b => b.addEventListener('click', ()=> apply(Number(b.dataset.rate))));
+    apply(DEFAULT_RATE);
+  }
+
   render();
 </script>
