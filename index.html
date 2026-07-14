@@ -484,6 +484,59 @@
     <div class="foot"><span>Мета-демо · запись</span><span class="counter">16 / 18</span></div>
   </section>
 
+  <!-- 17 · неудачный кейс -->
+  <section class="slide wide top">
+    <div class="eyebrow">16 · Неудачный кейс</div>
+    <div class="slide-body">
+      <h2>Где агент споткнулся: карточная игра с ходом за 5 секунд</h2>
+      <div class="grid2">
+        <div>
+          <p class="lead" style="margin-bottom:12px">Реальная попытка отыграть партию в билде <b>Spades STAGE</b>: игра в реальном времени, таймер хода ≈ 5 секунд. Агент физически не укладывался в окно и партия «играла себя» по таймауту.</p>
+          <ul class="plain">
+            <li>Цикл «скриншот → понять доску → клик» не влезает в 5 секунд</li>
+            <li>Клик по карте нужен <b>дважды</b> (выдвинуть → сбросить) — в спешке легко промахнуться</li>
+            <li>При гонке агент путал карты <b>в руке</b> (выдвинутые) и <b>на столе</b>, ошибался, чей ход</li>
+          </ul>
+        </div>
+        <div class="chatpanel">
+          <div class="msg warn"><span class="n">!</span>«Мой ход» появился — но пока распознаю доску, время вышло</div>
+          <div class="msg warn"><span class="n">!</span>По таймауту карта выброшена автоматически, не мной</div>
+          <div class="msg warn"><span class="n">!</span>Скриншот каждую секунду всё равно медленнее таймера</div>
+          <div class="msg warn"><span class="n">!</span>Партия закончилась быстрее, чем удалось осмысленно сыграть</div>
+        </div>
+      </div>
+      <p class="sub">Вывод одной строкой: не всякий флоу подходит агенту — когда таймаут короче времени реакции, автоматизация проигрывает.</p>
+    </div>
+    <div class="foot"><span>Неудачный кейс</span><span class="counter">17 / 18</span></div>
+  </section>
+
+  <!-- 18 · разбор неудачного кейса -->
+  <section class="slide top">
+    <div class="eyebrow">17 · Неудачный кейс · разбор</div>
+    <div class="slide-body">
+      <h2>Три причины — и честная граница применимости</h2>
+      <div class="grid3">
+        <div class="card">
+          <span class="tag warn">Причина 1</span>
+          <h3>Жёсткий таймаут</h3>
+          <p>5 секунд короче, чем «скриншот + рассуждение + действие». Агент думает медленнее, чем требует игра в реальном времени.</p>
+        </div>
+        <div class="card">
+          <span class="tag warn">Причина 2</span>
+          <h3>Canvas без сигналов</h3>
+          <p>Игра рисуется на <code class="k">&lt;canvas&gt;</code> в iframe. Консоль и network не отдают состояние — проверено, пусто. Ход читается только по скриншоту, а это ещё медленнее.</p>
+        </div>
+        <div class="card">
+          <span class="tag warn">Причина 3</span>
+          <h3>Домен FB заблокирован</h3>
+          <p>facebook.com в блоклисте агента: сам открыть и водить игру он не может, билд пришлось запускать руками.</p>
+        </div>
+      </div>
+      <p class="lead" style="margin-top:4px">Куда это ложится: браузерный агент силён на <b>пошаговых, без жёсткого таймаута</b> флоу с состоянием в DOM/консоли — FTUE, AdminPanel, магазин. И плох на latency-critical пиксельном геймплее. Это не баг, а известная граница — тесты планируем с её учётом.</p>
+    </div>
+    <div class="foot"><span>Неудачный кейс · разбор</span><span class="counter">18 / 18</span></div>
+  </section>
+
   <!-- 15 -->
   <section class="slide top">
     <div class="eyebrow">Итоги</div>
