@@ -1,0 +1,477 @@
+<title>Claude + Chrome: практический playbook по тестированию</title>
+<style>
+  :root{
+    --bg:#f2f3f5; --panel:#ffffff; --panel-2:#e9ebef; --ink:#14171c; --ink-dim:#565d6b;
+    --line:#d8dbe1; --accent:#c9791a; --accent-ink:#1a1200; --accent-2:#1f7a6a; --danger:#b6433f;
+    --font-display:-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    --font-body:-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    --font-mono:ui-monospace,"Cascadia Code","Consolas","SF Mono",Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#10131a; --panel:#171b24; --panel-2:#1d2230; --ink:#e8ebf1; --ink-dim:#8a92a3;
+      --line:#2a2f3b; --accent:#e8a33d; --accent-ink:#1a1200; --accent-2:#5fc9b3; --danger:#e2726f;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#10131a; --panel:#171b24; --panel-2:#1d2230; --ink:#e8ebf1; --ink-dim:#8a92a3;
+    --line:#2a2f3b; --accent:#e8a33d; --accent-ink:#1a1200; --accent-2:#5fc9b3; --danger:#e2726f;
+  }
+  :root[data-theme="light"]{
+    --bg:#f2f3f5; --panel:#ffffff; --panel-2:#e9ebef; --ink:#14171c; --ink-dim:#565d6b;
+    --line:#d8dbe1; --accent:#c9791a; --accent-ink:#1a1200; --accent-2:#1f7a6a; --danger:#b6433f;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--font-body);
+    overflow:hidden; height:100vh; width:100vw;
+  }
+  .deck{ position:relative; height:100vh; width:100vw; }
+  .progress{ position:fixed; top:0; left:0; height:3px; background:var(--accent); width:0%; transition:width .35s ease; z-index:50; }
+
+  .slide{
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    padding:5vh 7vw 7vh; opacity:0; visibility:hidden; transform:translateY(12px);
+    transition:opacity .38s ease, transform .38s ease; overflow:hidden;
+  }
+  .slide.active{ opacity:1; visibility:visible; transform:translateY(0); }
+  @media (prefers-reduced-motion: reduce){ .slide{ transition:opacity .01s linear; transform:none; } }
+
+  .eyebrow{
+    font-family:var(--font-mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent); display:flex; align-items:center; gap:10px; margin-bottom:20px; flex-shrink:0;
+  }
+  .eyebrow::before{ content:""; width:7px; height:7px; background:var(--accent); border-radius:50%; display:inline-block; }
+
+  .slide-body{ flex:1; display:flex; flex-direction:column; justify-content:center; gap:18px; max-width:1180px; min-height:0; }
+  .slide.wide .slide-body{ max-width:none; }
+  .slide.top .slide-body{ justify-content:flex-start; }
+
+  h1{ font-family:var(--font-display); font-weight:800; font-size:clamp(34px,5.2vw,64px); line-height:1.04; margin:0; text-wrap:balance; }
+  h2{ font-family:var(--font-display); font-weight:800; font-size:clamp(25px,3.4vw,40px); line-height:1.1; margin:0; text-wrap:balance; }
+  .sub{ font-size:clamp(15px,1.7vw,19px); color:var(--ink-dim); max-width:64ch; line-height:1.5; margin:0; }
+  p.lead{ font-size:clamp(15px,1.7vw,19px); line-height:1.5; max-width:70ch; margin:0; }
+
+  .foot{
+    display:flex; justify-content:space-between; align-items:center;
+    font-family:var(--font-mono); font-size:12px; color:var(--ink-dim);
+    margin-top:14px; padding-top:14px; border-top:1px solid var(--line); flex-shrink:0;
+  }
+  .counter{ font-variant-numeric:tabular-nums; }
+
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:22px; align-items:stretch; }
+  .grid3{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  .grid2.tight{ gap:18px; }
+
+  .card{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px 20px; }
+  .card h3{ font-family:var(--font-display); font-size:17px; margin:0 0 7px; }
+  .card p{ margin:0; color:var(--ink-dim); font-size:14px; line-height:1.48; }
+  .card p + p{ margin-top:8px; }
+
+  .tag{ font-family:var(--font-mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--accent); border:1px solid var(--accent); border-radius:4px; padding:2px 7px; display:inline-block; margin-bottom:9px; }
+  .tag.alt{ color:var(--accent-2); border-color:var(--accent-2); }
+  .tag.warn{ color:var(--danger); border-color:var(--danger); }
+
+  /* numbered steps */
+  ol.steps{ list-style:none; counter-reset:s; margin:0; padding:0; display:flex; flex-direction:column; gap:12px; }
+  ol.steps li{ counter-increment:s; position:relative; padding-left:44px; font-size:15.5px; line-height:1.45; }
+  ol.steps li::before{
+    content:counter(s); position:absolute; left:0; top:-1px; width:28px; height:28px;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--accent); color:var(--accent-ink); border-radius:7px;
+    font-family:var(--font-mono); font-weight:700; font-size:14px;
+  }
+  ol.steps li b{ font-weight:700; }
+  ol.steps.two{ display:grid; grid-template-columns:1fr 1fr; gap:12px 30px; }
+
+  ul.plain{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
+  ul.plain li{ padding-left:20px; position:relative; font-size:15px; line-height:1.45; color:var(--ink); }
+  ul.plain li::before{ content:"—"; position:absolute; left:0; color:var(--accent); font-family:var(--font-mono); }
+
+  code.k, .kbd{ font-family:var(--font-mono); background:var(--panel-2); border:1px solid var(--line);
+    border-radius:5px; padding:2px 7px; font-size:.86em; color:var(--ink); white-space:nowrap; }
+  code.k.acc{ color:var(--accent); border-color:var(--accent); }
+  .menu{ font-family:var(--font-mono); font-size:.86em; color:var(--accent-2); }
+
+  /* prompt box — exact text to paste */
+  .prompt{ background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--accent);
+    border-radius:8px; padding:14px 16px; font-family:var(--font-mono); font-size:13.5px; line-height:1.55; color:var(--ink); }
+  .prompt .who{ color:var(--accent); font-size:11px; letter-spacing:.08em; text-transform:uppercase; display:block; margin-bottom:6px; }
+
+  .flow{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-family:var(--font-mono); font-size:13px; }
+  .flow .node{ background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:11px 15px; }
+  .flow .arrow{ color:var(--ink-dim); }
+
+  /* browser + chat mock */
+  .browser{ background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden; box-shadow:0 18px 40px -24px rgba(0,0,0,.45); }
+  .browser-bar{ display:flex; align-items:center; gap:9px; padding:8px 11px; background:var(--panel-2); border-bottom:1px solid var(--line); }
+  .dot{ width:9px; height:9px; border-radius:50%; background:var(--line); }
+  .url{ font-family:var(--font-mono); font-size:11px; color:var(--ink-dim); background:var(--bg); border:1px solid var(--line); border-radius:5px; padding:4px 10px; flex:1; }
+  .chatpanel{ display:flex; flex-direction:column; gap:8px; }
+  .msg{ background:var(--panel-2); border-radius:8px; padding:8px 11px; font-size:13px; line-height:1.4; display:flex; gap:8px; }
+  .msg .n{ font-family:var(--font-mono); color:var(--accent); flex-shrink:0; }
+  .msg.ok{ border-left:2px solid var(--accent-2); }
+  .msg.warn{ border-left:2px solid var(--danger); }
+
+  table.cmp{ width:100%; border-collapse:collapse; font-size:14px; }
+  table.cmp th, table.cmp td{ text-align:left; padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  table.cmp th{ font-family:var(--font-mono); font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-dim); }
+  table.cmp td:first-child{ font-family:var(--font-mono); font-size:12.5px; color:var(--accent); white-space:nowrap; }
+
+  .navbtn{ position:fixed; bottom:24px; width:40px; height:40px; border-radius:50%; border:1px solid var(--line);
+    background:var(--panel); color:var(--ink); display:flex; align-items:center; justify-content:center; cursor:pointer;
+    font-size:18px; z-index:60; transition:transform .15s ease, border-color .15s ease; }
+  .navbtn:hover{ border-color:var(--accent); transform:translateY(-1px); }
+  .navbtn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  #prev{ left:7vw; } #next{ right:7vw; }
+  .hint{ position:fixed; bottom:26px; left:50%; transform:translateX(-50%); font-family:var(--font-mono);
+    font-size:11px; color:var(--ink-dim); z-index:40; }
+</style>
+
+<div class="progress" id="progress"></div>
+<div class="deck" id="deck">
+
+  <!-- 01 -->
+  <section class="slide active">
+    <div class="eyebrow">Внутренний доклад · практика</div>
+    <div class="slide-body">
+      <h1>Claude + Chrome:<br>как заставить агента прогнать сценарий в браузере</h1>
+      <p class="sub">По шагам: что установить, куда нажать, как сформулировать задачу и где смотреть результат. На примере веб-билдов Kosmos.</p>
+    </div>
+    <div class="foot"><span>Artem Kopyl · 14 июля 2026</span><span class="counter">01 / 16</span></div>
+  </section>
+
+  <!-- 02 -->
+  <section class="slide">
+    <div class="eyebrow">01 · Два способа</div>
+    <div class="slide-body">
+      <h2>Есть два входа в одну и ту же технологию</h2>
+      <div class="grid2">
+        <div class="card">
+          <span class="tag">Способ А · плагин</span>
+          <h3>Расширение «Claude for Chrome»</h3>
+          <p>Отдельное расширение из Chrome Web Store. Даёт <b>боковую панель с чатом</b> в твоём настоящем Chrome. Пишешь задачу словами — Claude перехватывает активную вкладку и работает в ней <b>под твоими логинами</b>: заходит туда, где ты уже авторизован.</p>
+          <p>Это и есть заявленная тема — «плагин, где Claude появляется чатом и берёт вкладку на себя».</p>
+        </div>
+        <div class="card">
+          <span class="tag alt">Способ Б · то, чем пользуемся</span>
+          <h3>Десктоп-приложение Claude + вкладка браузера</h3>
+          <p>То, в чём ты пишешь прямо сейчас. Рядом с чатом — <b>встроенная вкладка браузера</b>, которой Claude управляет напрямую. Ставить расширение не нужно, всё уже здесь.</p>
+          <p>Идеально, чтобы гонять <b>наши веб-билды</b> с mirror: даёшь задачу в чат — Claude водит вкладку и присылает отчёт обратно.</p>
+        </div>
+      </div>
+      <p class="sub">Способ А — для работы в личном Chrome с готовыми логинами. Способ Б — наш рабочий инструмент для тестирования билдов, без установки.</p>
+    </div>
+    <div class="foot"><span>Два способа</span><span class="counter">02 / 16</span></div>
+  </section>
+
+  <!-- 03 -->
+  <section class="slide top">
+    <div class="eyebrow">02 · Перед стартом</div>
+    <div class="slide-body">
+      <h2>Что нужно иметь до первого клика</h2>
+      <ul class="plain">
+        <li>Платный план Claude напрямую от Anthropic: <b>Pro, Max, Team или Enterprise</b>. На Free расширения нет; доступ только через сторонних провайдеров (Bedrock и т.п.) не подойдёт.</li>
+        <li>Браузер <b>Google Chrome или Microsoft Edge</b>. Brave, Arc и прочие Chromium — пока нет. <b>WSL не поддерживается</b> — на нашем Windows работаем в обычном Chrome/Edge.</li>
+        <li>Для способа А (плагин) — расширение <b>версии 1.0.36+</b> из Chrome Web Store. Способ Б работает сразу в десктоп-приложении, без установки.</li>
+        <li>Понимание, что агент <b>делит логин-сессию браузера</b>: он зайдёт на любой сайт, где ты уже залогинен. На login-странице и CAPTCHA он <b>останавливается и просит сделать вручную</b>.</li>
+      </ul>
+    </div>
+    <div class="foot"><span>Требования</span><span class="counter">03 / 16</span></div>
+  </section>
+
+  <!-- 04 -->
+  <section class="slide top">
+    <div class="eyebrow">03 · Способ А · установка</div>
+    <div class="slide-body">
+      <h2>Ставим расширение — 5 кликов</h2>
+      <ol class="steps">
+        <li>Открой <b>Chrome Web Store</b>, страницу расширения «Claude» (ищи Claude / Anthropic или перейди по прямой ссылке на listing).</li>
+        <li>Нажми <code class="k">Add to Chrome</code> → в диалоге <code class="k">Add extension</code>. Установка занимает пару секунд, в тулбаре появляется иконка-пазл.</li>
+        <li>Кликни иконку расширения → откроется панель входа. Залогинься <b>той же почтой</b>, что на claude.ai (<code class="k">artem.kopyl@kosmos.games</code>).</li>
+        <li>Закрепи на панели: иконка-пазл в тулбаре → «булавка» (thumbtack) рядом с «Claude». Теперь панель всегда под рукой.</li>
+        <li>Chrome покажет <b>диалог разрешений</b> («read and change data on sites you visit») — это и есть то, что даёт Claude видеть страницу. Подтверди.</li>
+      </ol>
+    </div>
+    <div class="foot"><span>Установка расширения</span><span class="counter">04 / 16</span></div>
+  </section>
+
+  <!-- 05 -->
+  <section class="slide top">
+    <div class="eyebrow">04 · Способ А · первый запуск</div>
+    <div class="slide-body">
+      <h2>Режим разрешений и доступ к сайтам</h2>
+      <div class="grid2 tight">
+        <div class="card">
+          <span class="tag warn">Режим действий</span>
+          <h3>При первом открытии выбираешь один из двух</h3>
+          <p><b>«Ask before acting»</b> — Claude спрашивает подтверждение перед каждым действием. Бери этот на старте и для демо: видно каждый шаг.</p>
+          <p><b>«Act without asking»</b> — работает автономно, без вопросов. Удобно для отлаженного повторяющегося сценария, но контроль ниже.</p>
+          <p>Режим меняется в любой момент.</p>
+        </div>
+        <div class="card">
+          <span class="tag">Доступ к сайтам</span>
+          <h3>Где разрешить конкретный домен</h3>
+          <p>Иконка расширения → <span class="menu">три точки</span> в правом верхнем углу панели → <span class="menu">Settings</span> → <span class="menu">Permissions</span>.</p>
+          <p>В разделе <b>«Your approved sites»</b> видно, каким доменам выдан статус «always allow». Сюда добавляешь <code class="k">mirror.kosmosteam.com</code>, чтобы не подтверждать каждый заход.</p>
+          <p>Финансы и чувствительные категории заблокированы по умолчанию.</p>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>Разрешения расширения</span><span class="counter">05 / 16</span></div>
+  </section>
+
+  <!-- 06 -->
+  <section class="slide top">
+    <div class="eyebrow">05 · Способ Б · десктоп-приложение</div>
+    <div class="slide-body">
+      <h2>Вкладка браузера уже встроена в приложение, где ты пишешь</h2>
+      <ol class="steps">
+        <li><b>Ничего не устанавливаешь.</b> Ты уже в чате десктоп-приложения Claude — рядом открывается вкладка браузера, которой Claude управляет напрямую. Это тот же движок, что и в плагине, только без настройки.</li>
+        <li><b>Даёшь задачу текстом</b> прямо в чат: «открой <code class="k">mirror.kosmosteam.com/...</code>, сделай то-то, проверь консоль». Claude сам открывает вкладку и водит её — навигация, клики, ввод, скролл.</li>
+        <li><b>Claude читает вкладку изнутри</b>: дерево страницы (DOM), сообщения консоли, сетевые запросы, делает скриншот — и присылает вывод обратно в чат.</li>
+        <li><b>Всё видно в реальном времени</b>: вкладка стоит рядом с чатом, каждый шаг агента виден на экране, можно вмешаться в любой момент.</li>
+      </ol>
+      <p class="sub">Разница со способом А в одном: здесь встроенная вкладка приложения (удобно для наших билдов), а плагин управляет твоим личным Chrome с уже открытыми логинами. Движок и возможности — те же.</p>
+    </div>
+    <div class="foot"><span>Десктоп-приложение</span><span class="counter">06 / 16</span></div>
+  </section>
+
+  <!-- 07 -->
+  <section class="slide top">
+    <div class="eyebrow">06 · Как ставить задачу</div>
+    <div class="slide-body">
+      <h2>Хороший промпт = цель + шаги + что проверить</h2>
+      <p class="sub">Не «протестируй игру», а конкретная цель, маршрут и критерий успеха. Пример из официальной документации:</p>
+      <div class="prompt">
+        <span class="who">Ты → Claude</span>
+        Go to code.claude.com/docs, click on the search box, type "hooks", and tell me what results appear
+      </div>
+      <ul class="plain" style="margin-top:4px">
+        <li><b>Куда идти</b> — конкретный URL, а не «зайди в игру»</li>
+        <li><b>Что сделать</b> — по шагам: click / type / submit</li>
+        <li><b>Что вернуть</b> — «tell me what results appear», «check the console for errors» — иначе агент не поймёт, что считать результатом</li>
+        <li>Про консоль проси <b>конкретный паттерн</b> («any errors when the page loads»), а не «весь лог» — логи многословны</li>
+      </ul>
+    </div>
+    <div class="foot"><span>Анатомия промпта</span><span class="counter">07 / 16</span></div>
+  </section>
+
+  <!-- 08 -->
+  <section class="slide wide top">
+    <div class="eyebrow">07 · Что агент делает под капотом</div>
+    <div class="slide-body">
+      <h2>Читающие и меняющие действия — почему это важно</h2>
+      <div class="grid2">
+        <div class="card">
+          <span class="tag alt">Read-only · без подтверждения</span>
+          <h3>Смотрит, но не трогает</h3>
+          <p><code class="k">read_page</code> — дерево страницы (DOM/accessibility)<br>
+          <code class="k">get_page_text</code> — текст страницы<br>
+          <code class="k">find</code> — поиск элемента<br>
+          чтение <b>console</b> и <b>network</b><br>
+          <b>screenshot</b> (без сохранения на диск)</p>
+        </div>
+        <div class="card">
+          <span class="tag warn">State-changing · спросит разрешение</span>
+          <h3>Меняет состояние вкладки</h3>
+          <p>клики, ввод текста<br>
+          навигация по URL<br>
+          управление вкладками и окнами<br>
+          запись <b>GIF</b><br>
+          сохранение скриншота на диск</p>
+        </div>
+      </div>
+      <p class="sub">Читающие действия безопасны и идут без остановок. Всё, что меняет состояние вкладки, можно поставить на подтверждение — отсюда правило демо: держи режим «спрашивать перед действием», чтобы каждый клик был виден залу.</p>
+    </div>
+    <div class="foot"><span>Инструменты агента</span><span class="counter">08 / 16</span></div>
+  </section>
+
+  <!-- 09 -->
+  <section class="slide top">
+    <div class="eyebrow">08 · Где смотреть результат</div>
+    <div class="slide-body">
+      <h2>Четыре канала, откуда берём вердикт</h2>
+      <ol class="steps two">
+        <li><b>Живое окно Chrome.</b> Действия идут в реальном видимом окне — просто смотришь, куда агент кликает.</li>
+        <li><b>Консоль.</b> Проси «check the console for errors» — агент читает <code class="k">console</code> и фильтрует по паттерну. Ошибки JS всплывут тут.</li>
+        <li><b>Network.</b> «any failed requests?» — агент читает сетевые запросы, ловит 4xx/5xx и упавшие ассеты.</li>
+        <li><b>Скриншот / GIF.</b> «record a GIF of the checkout flow» — сохранит запись прогона, чтобы приложить к багу или показать команде.</li>
+      </ol>
+      <p class="sub">Итог агент возвращает <b>текстом в чат</b>: что сделал, что нашёл, где остановился. Это и есть отчёт — его прикладываешь к задаче.</p>
+    </div>
+    <div class="foot"><span>Чтение результатов</span><span class="counter">09 / 16</span></div>
+  </section>
+
+  <!-- 10 -->
+  <section class="slide wide top">
+    <div class="eyebrow">09 · Демо-сценарий tmc · по шагам</div>
+    <div class="slide-body">
+      <h2>Смоук-прогон веб-билда после заливки на mirror</h2>
+      <div class="grid2">
+        <div>
+          <p class="sub" style="margin-bottom:10px">Готовый промпт — вставляешь в чат: в панель плагина или в десктоп-приложение:</p>
+          <div class="prompt">
+            <span class="who">Ты → Claude</span>
+            Открой mirror.kosmosteam.com/tmc/build-482, дождись загрузки клиента. Пройди FTUE (жми «Далее» до конца). Открой AdminPanel, вкладку Currency, начисли 1000 тестовой валюты. После каждого шага проверяй консоль на ошибки и network на 4xx/5xx. В конце дай отчёт: что прошло, где были ошибки.
+          </div>
+        </div>
+        <div class="chatpanel">
+          <div class="msg"><span class="n">1</span>Навигация на build-482 · жду canvas клиента</div>
+          <div class="msg"><span class="n">2</span>read_page → нашёл кнопку «Далее», кликаю ×3</div>
+          <div class="msg"><span class="n">3</span>Открываю AdminPanel → вкладка Currency</div>
+          <div class="msg"><span class="n">4</span>Ввожу 1000, жму «Add» → баланс обновился</div>
+          <div class="msg warn"><span class="n">5</span>Console: 1 warning (deprecated shader) · 0 errors</div>
+          <div class="msg ok"><span class="n">6</span>Network: без 4xx/5xx · отчёт готов</div>
+        </div>
+      </div>
+      <p class="sub" style="margin-top:8px">Панель справа — как выглядит проговаривание шагов. Схема иллюстративная: реальный прогон покажу на живом билде.</p>
+    </div>
+    <div class="foot"><span>Демо-сценарий</span><span class="counter">10 / 16</span></div>
+  </section>
+
+  <!-- 11 -->
+  <section class="slide top">
+    <div class="eyebrow">10 · Встык с нашим пайплайном</div>
+    <div class="slide-body">
+      <h2>Это ещё один шаг в том, что уже есть</h2>
+      <div class="flow">
+        <div class="node">Jenkins: spd/client</div><div class="arrow">→</div>
+        <div class="node">upload-standalone-build → mirror</div><div class="arrow">→</div>
+        <div class="node" style="border-color:var(--accent)">агент прогоняет сценарий</div><div class="arrow">→</div>
+        <div class="node">отчёт в задачу QA</div>
+      </div>
+      <p class="lead" style="margin-top:6px">Сборка и заливка у нас уже автоматизированы. Не хватает только шага «кто-то походил руками» перед тем, как звать живого QA. Агент закрывает именно этот разрыв. Что отдаём ему на первом заходе:</p>
+      <div class="grid3" style="margin-top:8px">
+        <div class="card">
+          <span class="tag">Флоу 1</span>
+          <h3>FTUE</h3>
+          <p>Пройти обучение от старта до конца, убедиться, что все экраны кликабельны и нет застреваний. Ловим ошибки консоли на каждом шаге.</p>
+        </div>
+        <div class="card">
+          <span class="tag alt">Флоу 2</span>
+          <h3>AdminPanel</h3>
+          <p>Открыть табы, начислить валюту/ресурсы, проверить, что UI обновился и сервер ответил без 4xx/5xx.</p>
+        </div>
+        <div class="card">
+          <span class="tag warn">Флоу 3</span>
+          <h3>Магазин и тултипы</h3>
+          <p>Открыть витрину, проверить цены и тексты, поймать наезжающие тултипы, обрезанный текст, опечатки локализации.</p>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>Пайплайн tmc</span><span class="counter">11 / 16</span></div>
+  </section>
+
+  <!-- 12 -->
+  <section class="slide top">
+    <div class="eyebrow">11 · Отличие от скриптовых E2E</div>
+    <div class="slide-body">
+      <h2>Не замена Playwright — другой инструмент под другую задачу</h2>
+      <div class="grid2">
+        <div class="card">
+          <span class="tag alt">Selenium / Playwright</span>
+          <h3>Жёсткий скрипт</h3>
+          <p>Селекторы и ожидания прописаны в коде. Быстро и детерминированно на тысячах прогонов в CI — но ломается от смены вёрстки, и починка порой дороже написания.</p>
+        </div>
+        <div class="card">
+          <span class="tag">Агент в браузере</span>
+          <h3>Сценарий на языке</h3>
+          <p>Описал цель — агент сам ищет путь и попутно читает консоль/network. Медленнее на один прогон, но не требует переписывать скрипт при каждом изменении UI.</p>
+        </div>
+      </div>
+      <p class="sub">Скриптовые тесты не уходят. Агент хорош там, где UI живой и меняется чаще, чем успевают чинить тесты, и для exploratory-прогона, который скриптом вообще не пишут.</p>
+    </div>
+    <div class="foot"><span>vs E2E</span><span class="counter">12 / 16</span></div>
+  </section>
+
+  <!-- 13 -->
+  <section class="slide top">
+    <div class="eyebrow">12 · Когда что-то идёт не так</div>
+    <div class="slide-body">
+      <h2>Траблшутинг: точные действия</h2>
+      <table class="cmp">
+        <tr><th>Симптом</th><th>Причина</th><th>Что делать</th></tr>
+        <tr><td>Браузер не отвечает</td><td>Модалка (alert/confirm) блокирует страницу</td><td>Закрой диалог вручную → скажи Claude продолжить</td></tr>
+        <tr><td>No tab available</td><td>Агент дёрнулся раньше готовности вкладки</td><td>Попроси создать новую вкладку и повторить</td></tr>
+        <tr><td>Claude завис на логине / CAPTCHA</td><td>Он специально останавливается на человеке</td><td>Залогинься или пройди капчу вручную → «продолжай»</td></tr>
+        <tr><td>Плагин не реагирует (способ А)</td><td>Расширение выключено или уснуло</td><td>Включи/переподключи в <code class="k">chrome://extensions</code></td></tr>
+        <tr><td>Агент кликнул не туда</td><td>UI изменился / элемент не распознан</td><td>Уточни шаг словами: «кнопка справа сверху, с иконкой X»</td></tr>
+      </table>
+    </div>
+    <div class="foot"><span>Траблшутинг</span><span class="counter">13 / 16</span></div>
+  </section>
+
+  <!-- 14 -->
+  <section class="slide top">
+    <div class="eyebrow">13 · Лайфхак в сторону</div>
+    <div class="slide-body">
+      <h2>Эта презентация — сама пример быстрой итерации</h2>
+      <p class="lead">Слайды лежат в git-репозитории, подключённом к Netlify. Пуш в ветку — сайт задеплоился сам. Добавил слайд после доклада — он уже на сайте, без ручной публикации.</p>
+      <div class="flow">
+        <div class="node">git push</div><div class="arrow">→</div>
+        <div class="node" style="border-color:var(--accent)">Netlify: авто-деплой</div><div class="arrow">→</div>
+        <div class="node">сайт обновился по той же ссылке</div>
+      </div>
+      <ul class="plain" style="margin-top:6px">
+        <li>Один HTML-файл — статика, без сборки. Netlify цепляется к репозиторию и деплоит любой пуш в ветку.</li>
+        <li>Правки после доклада не рассылаешь заново — ссылка живёт, контент под ней обновляется сам.</li>
+        <li>Тот же принцип, что и в основной теме: убираем ручные шаги между «сделал» и «показал».</li>
+      </ul>
+    </div>
+    <div class="foot"><span>Лайфхак: Netlify</span><span class="counter">14 / 16</span></div>
+  </section>
+
+  <!-- 15 -->
+  <section class="slide top">
+    <div class="eyebrow">Итоги</div>
+    <div class="slide-body">
+      <h2>Забрать с доклада</h2>
+      <div class="grid3">
+        <div class="card"><span class="tag">1</span><h3>Два входа</h3><p>Плагин в личном Chrome (твои логины) или встроенная вкладка в десктоп-приложении (наши билды). Движок один.</p></div>
+        <div class="card"><span class="tag alt">2</span><h3>Промпт = цель+шаги+критерий</h3><p>URL, действия по пунктам, что проверить (консоль/network). Иначе агент не знает, что считать результатом.</p></div>
+        <div class="card"><span class="tag warn">3</span><h3>Дополняет QA</h3><p>Быстрый смоук/exploratory после каждого билда. Не замена регрессионного набора — нужен обзор отчёта.</p></div>
+      </div>
+    </div>
+    <div class="foot"><span>Итоги</span><span class="counter">15 / 16</span></div>
+  </section>
+
+  <!-- 16 -->
+  <section class="slide">
+    <div class="eyebrow">Что дальше</div>
+    <div class="slide-body">
+      <h2>Предлагаю пилот: один флоу на следующем staging-билде tmc</h2>
+      <p class="lead">Берём FTUE или AdminPanel, прогоняем через Claude in Chrome на ближайшем билде с mirror. Смотрим: что нашёл, что упустил, сколько времени сэкономил. Дальше решаем, встраивать ли в пайплайн.</p>
+      <p class="sub">Вопросы — сейчас или в личку. Artem Kopyl · artem.kopyl@kosmos.games</p>
+    </div>
+    <div class="foot"><span>Q&amp;A</span><span class="counter">16 / 16</span></div>
+  </section>
+
+</div>
+
+<button class="navbtn" id="prev" aria-label="Предыдущий слайд">‹</button>
+<button class="navbtn" id="next" aria-label="Следующий слайд">›</button>
+<div class="hint" id="hint">← → или пробел, чтобы листать</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const progress = document.getElementById('progress');
+  let i = 0;
+  function render(){
+    slides.forEach((s,idx)=> s.classList.toggle('active', idx===i));
+    progress.style.width = ((i+1)/slides.length*100) + '%';
+    const hint = document.getElementById('hint');
+    if(hint) hint.style.opacity = i===0 ? '1' : '0';
+  }
+  function go(delta){ i = Math.min(slides.length-1, Math.max(0, i+delta)); render(); }
+  document.getElementById('prev').addEventListener('click', ()=>go(-1));
+  document.getElementById('next').addEventListener('click', ()=>go(1));
+  window.addEventListener('keydown', (e)=>{
+    if(['ArrowRight',' ','PageDown'].includes(e.key)){ e.preventDefault(); go(1); }
+    if(['ArrowLeft','Backspace','PageUp'].includes(e.key)){ e.preventDefault(); go(-1); }
+  });
+  render();
+</script>
